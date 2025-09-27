@@ -1,0 +1,239 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Atlas Gym - Analytics Dashboard</title>
+    <link rel="stylesheet" href="{{ url_for('static', filename='main.css') }}">
+    <link rel="stylesheet" href="{{ url_for('static', filename='analytics.css') }}">
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.0.0/css/all.min.css">
+    <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+</head>
+<body>
+    <div class="container">
+        <header class="glass-header">
+            <h1><i class="fas fa-dumbbell"></i> ATLAS GYM</h1>
+            <nav class="nav-links">
+                <a href="/" class="nav-link"><i class="fas fa-home"></i> Home</a>
+                <a href="/admin" class="nav-link"><i class="fas fa-user-shield"></i> Admin</a>
+            </nav>
+        </header>
+
+        <div class="glass-card control-panel">
+            <div class="control-buttons">
+                <button onclick="downloadCSV()" class="btn btn-yellow">
+                    <i class="fas fa-download"></i> Download CSV
+                </button>
+                <button onclick="loadAnalytics()" class="btn btn-yellow">
+                    <i class="fas fa-sync-alt"></i> Refresh Data
+                </button>
+            </div>
+        </div>
+
+        <div class="stats-grid">
+            <div class="glass-card stat-card">
+                <i class="fas fa-users stats-icon"></i>
+                <h3>Total Members</h3>
+                <p id="total-customers">0</p>
+            </div>
+            <div class="glass-card stat-card">
+                <i class="fas fa-walking stats-icon"></i>
+                <h3>Total Visits</h3>
+                <p id="total-visits">0</p>
+            </div>
+        </div>
+
+        <div class="glass-card chart-section">
+            <h2><i class="fas fa-chart-line"></i> Monthly Attendance Trends</h2>
+            <div class="chart-container">
+                <canvas id="attendanceChart"></canvas>
+            </div>
+        </div>
+
+        <div class="glass-card member-stats">
+            <h2><i class="fas fa-clipboard-list"></i> Member Statistics</h2>
+            <div class="table-responsive">
+                <table>
+                    <thead>
+                        <tr>
+                            <th>Member Name</th>
+                            <th>Member ID</th>
+                            <th>Total Visits</th>
+                            <th>Monthly Average</th>
+                        </tr>
+                    </thead>
+                    <tbody id="customer-stats-body"></tbody>
+                </table>
+            </div>
+        </div>
+    </div>
+
+    <div id="message" class="message"></div>
+
+    <script>
+        let chart = null;
+
+        async function loadAnalytics() {
+            try {
+                const response = await fetch('/get-analytics-data');
+                if (!response.ok) {
+                    throw new Error('Failed to fetch analytics data');
+                }
+                const data = await response.json();
+                
+                // Update summary stats with animation
+                animateNumber('total-customers', data.summary.total_customers);
+                animateNumber('total-visits', data.summary.total_visits);
+
+                // Create chart
+                createChart(data);
+
+                // Update member stats table
+                updateMemberStats(data.summary.customer_stats);
+
+                showMessage('Data refreshed successfully!', 'success');
+            } catch (error) {
+                console.error('Error:', error);
+                showMessage('Error loading analytics data', 'error');
+            }
+        }
+
+        function animateNumber(elementId, finalNumber) {
+            const element = document.getElementById(elementId);
+            const start = parseInt(element.innerText) || 0;
+            const duration = 1000;
+            const steps = 20;
+            const increment = (finalNumber - start) / steps;
+            
+            let current = start;
+            const timer = setInterval(() => {
+                current += increment;
+                element.textContent = Math.round(current);
+                if (current >= finalNumber) {
+                    element.textContent = finalNumber;
+                    clearInterval(timer);
+                }
+            }, duration / steps);
+        }
+
+        function createChart(data) {
+            const ctx = document.getElementById('attendanceChart').getContext('2d');
+            if (chart) {
+                chart.destroy();
+            }
+
+            chart = new Chart(ctx, {
+                type: 'line',
+                data: {
+                    labels: data.labels.map(label => {
+                        const [year, month] = label.split('-');
+                        return new Date(year, month - 1).toLocaleDateString('en-US', {
+                            year: 'numeric',
+                            month: 'short'
+                        });
+                    }),
+                    datasets: data.datasets.map((dataset, index) => ({
+                        label: dataset.label,
+                        data: dataset.data,
+                        borderColor: getColor(index),
+                        backgroundColor: getColor(index, 0.1),
+                        tension: 0.4,
+                        fill: true
+                    }))
+                },
+                options: {
+                    responsive: true,
+                    maintainAspectRatio: false,
+                    plugins: {
+                        title: {
+                            display: true,
+                            text: 'Monthly Attendance by Member',
+                            color: '#ffd700',
+                            font: {
+                                family: 'Orbitron',
+                                size: 16
+                            }
+                        },
+                        legend: {
+                            position: 'bottom',
+                            labels: {
+                                color: '#ffd700',
+                                padding: 20,
+                                font: {
+                                    family: 'Poppins',
+                                    size: 12
+                                }
+                            }
+                        }
+                    },
+                    scales: {
+                        y: {
+                            beginAtZero: true,
+                            grid: {
+                                color: 'rgba(255, 215, 0, 0.1)'
+                            },
+                            ticks: {
+                                color: '#ffd700'
+                            }
+                        },
+                        x: {
+                            grid: {
+                                color: 'rgba(255, 215, 0, 0.1)'
+                            },
+                            ticks: {
+                                color: '#ffd700'
+                            }
+                        }
+                    }
+                }
+            });
+        }
+
+        function updateMemberStats(stats) {
+            const tbody = document.getElementById('customer-stats-body');
+            tbody.innerHTML = '';
+            stats.forEach(stat => {
+                const [name, memberId] = stat.name.split(' (');
+                const row = document.createElement('tr');
+                row.innerHTML = `
+                    <td>${name}</td>
+                    <td>${memberId.replace(')', '')}</td>
+                    <td>${stat.total_visits}</td>
+                    <td>${stat.monthly_average}</td>
+                `;
+                tbody.appendChild(row);
+            });
+        }
+
+        function getColor(index, alpha = 1) {
+            const colors = [
+                `rgba(255, 215, 0, ${alpha})`,    // Gold
+                `rgba(255, 140, 0, ${alpha})`,    // Dark Orange
+                `rgba(255, 99, 132, ${alpha})`,   // Red
+                `rgba(54, 162, 235, ${alpha})`,   // Blue
+                `rgba(75, 192, 192, ${alpha})`,   // Green
+                `rgba(153, 102, 255, ${alpha})`,  // Purple
+                `rgba(255, 159, 64, ${alpha})`,   // Orange
+                `rgba(199, 199, 199, ${alpha})`   // Grey
+            ];
+            return colors[index % colors.length];
+        }
+
+        function showMessage(text, type) {
+            const messageDiv = document.getElementById('message');
+            messageDiv.textContent = text;
+            messageDiv.className = `message ${type} show`;
+            setTimeout(() => {
+                messageDiv.className = 'message';
+            }, 3000);
+        }
+
+        function downloadCSV() {
+            window.location.href = '/download-csv';
+        }
+
+        // Load analytics when page loads
+        document.addEventListener('DOMContentLoaded', loadAnalytics);
+    </script>
+</body>
+</html>

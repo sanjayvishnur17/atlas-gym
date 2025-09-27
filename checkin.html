@@ -1,0 +1,111 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Atlas Gym - Check In/Out</title>
+    <link rel="stylesheet" href="{{ url_for('static', filename='style.css') }}">
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.0.0/css/all.min.css">
+</head>
+<body class="checkin-page">
+    <div class="container">
+        <header class="glass-header">
+            <h1><i class="fas fa-dumbbell"></i> ATLAS GYM</h1>
+            <a href="/admin" class="admin-link"><i class="fas fa-user-shield"></i> Admin</a>
+        </header>
+        
+        <div class="attendance-form glass-card">
+            <h2><i class="fas fa-clipboard-check"></i> Attendance</h2>
+            <div class="form-group">
+                <i class="fas fa-user form-icon"></i>
+                <input type="text" id="name" placeholder="Enter your name" required>
+            </div>
+            <div class="form-group">
+                <i class="fas fa-id-card form-icon"></i>
+                <input type="text" id="member_id" placeholder="Enter Member ID" required>
+            </div>
+            <div class="button-group">
+                <button onclick="checkIn()" class="btn btn-check-in">
+                    <i class="fas fa-sign-in-alt"></i> Check In
+                </button>
+                <button onclick="checkOut()" class="btn btn-check-out">
+                    <i class="fas fa-sign-out-alt"></i> Check Out
+                </button>
+            </div>
+        </div>
+    </div>
+
+    <div id="message" class="message"></div>
+
+    <script>
+        async function checkIn() {
+            const name = document.getElementById('name').value;
+            const member_id = document.getElementById('member_id').value;
+            
+            if (!name || !member_id) {
+                showMessage('Please fill in all fields', 'error');
+                return;
+            }
+
+            try {
+                const response = await fetch('/check-in', {
+                    method: 'POST',
+                    headers: {
+                        'Content-Type': 'application/json'
+                    },
+                    body: JSON.stringify({ name, member_id })
+                });
+                
+                const data = await response.json();
+                if (response.ok) {
+                    showMessage(data.message, 'success');
+                    clearForm();
+                } else {
+                    showMessage(data.error, 'error');
+                }
+            } catch (error) {
+                showMessage('Error during check-in', 'error');
+            }
+        }
+
+        async function checkOut() {
+            const member_id = document.getElementById('member_id').value;
+            
+            if (!member_id) {
+                showMessage('Please enter your Member ID', 'error');
+                return;
+            }
+
+            try {
+                const response = await fetch('/check-out', {
+                    method: 'POST',
+                    headers: {
+                        'Content-Type': 'application/json'
+                    },
+                    body: JSON.stringify({ member_id })
+                });
+                
+                const data = await response.json();
+                showMessage(data.message, 'success');
+                clearForm();
+            } catch (error) {
+                showMessage('Error during check-out', 'error');
+            }
+        }
+
+        function showMessage(text, type) {
+            const messageDiv = document.getElementById('message');
+            messageDiv.textContent = text;
+            messageDiv.className = `message ${type} show`;
+            setTimeout(() => {
+                messageDiv.className = 'message';
+            }, 3000);
+        }
+
+        function clearForm() {
+            document.getElementById('name').value = '';
+            document.getElementById('member_id').value = '';
+        }
+    </script>
+</body>
+</html>

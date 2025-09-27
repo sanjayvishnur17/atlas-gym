@@ -1,0 +1,40 @@
+<!DOCT    <link rel="stylesheet" href="{{ url_for('static', filename='main.css') }}">
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.0.0/css/all.min.css">
+</head>
+<body class="landing-page">
+    <div class="landing-container">
+        <div class="gym-title">
+            <h1 class="main-title">ATLAS GYM</h1>
+            <div class="pulse-circle"></div>
+            <p class="press-space">Press SPACEBAR to Enter</p>
+        </div>
+    </div>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>ATLAS GYM</title>
+    <link rel="stylesheet" href="{{ url_for('static', filename='main.css') }}">
+</head>
+<body class="landing-page">
+    <div class="landing-container">
+        <div class="gym-title">
+            <h1 class="main-title">ATLAS GYM</h1>
+            <div class="pulse-circle"></div>
+            <p class="press-space">Press SPACEBAR to Enter</p>
+        </div>
+    </div>
+
+    <script>
+        document.addEventListener('keydown', function(event) {
+            if (event.code === 'Space') {
+                event.preventDefault();
+                document.querySelector('.landing-container').classList.add('fade-out');
+                setTimeout(() => {
+                    window.location.href = '/checkin';
+                }, 1000);
+            }
+        });
+    </script>
+</body>
+</html>
